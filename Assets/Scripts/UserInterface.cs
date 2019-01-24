@@ -6,6 +6,7 @@ public class UserInterface : MonoBehaviour {
 
   public Color unselectedColor = new Color(1.0f, 1.0f, 1.0f, 1.0f);
   public Color selectedColor = new Color(0.2122642f, 0.4006358f, 1.0f, 1.0f);
+  public GameObject VRRaycaster;
 
   private GameObject topBorder;
   private GameObject bottomBorder;
@@ -25,11 +26,19 @@ public class UserInterface : MonoBehaviour {
     }
   }
 
-  void OnVRTriggerDown(string name) {
+  void OnVRTriggerDown(string buttonName) {
+    if(buttonName.Split('_')[0] == "Model") {
+      UpdateModel(buttonName.Split('_')[1]);
+    } else if(buttonName.Split('_')[0] == "Mount") {
+      VRRaycaster.SendMessage("Mount", modelSelected);
+    }
+  }
+
+  void UpdateModel(string numId) {
 
     UnselectPanel();
 
-    switch(name.Split('_')[1]) {
+    switch(numId) {
       case "0":
         modelSelected = 0;
         break;

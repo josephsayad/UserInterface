@@ -14,6 +14,13 @@ public class VRRaycaster : MonoBehaviour {
 	public LayerMask excludeLayers;
 	public VRRaycaster.Callback raycastHitCallback;
 	public GameObject UserInterface;
+	public GameObject[] Models;
+
+	private bool mounted = false;
+	private uint entityToMount;
+	private Vector3 mountDistance = new Vector3(1.0f, 1.0f, 1.0f);
+	private float zDist = 3.0f;
+	private float xDist = 0.0f;
 
 	void Awake() {
 		if (leftHandAnchor == null) {
@@ -63,6 +70,7 @@ public class VRRaycaster : MonoBehaviour {
 	void Update() {
 
 		Transform pointer = Pointer;
+
 		if (pointer == null) {
 			return;
 		}
@@ -74,22 +82,94 @@ public class VRRaycaster : MonoBehaviour {
 			lineRenderer.SetPosition (1, laserPointer.origin + laserPointer.direction * maxRayDistance);
 		}
 
+		/* Handle raycast hits when raycaster is not mounted & handle entityMounted
+		 * when raycaster is mounted
+		 */
 
-		RaycastHit hit;
+		 if(!mounted) {
 
-		if (Physics.Raycast (laserPointer, out hit, maxRayDistance, ~excludeLayers)) {
+			 RaycastHit hit;
+			 if (Physics.Raycast (laserPointer, out hit, maxRayDistance, ~excludeLayers)) {
+			 		if (lineRenderer != null) {
+			 			lineRenderer.SetPosition (1, hit.point);
+			 		}
 
-			if (lineRenderer != null) {
-				lineRenderer.SetPosition (1, hit.point);
-			}
+			 		if (raycastHitCallback != null) {
+			 			raycastHitCallback.Invoke (laserPointer, hit);
+			 		}
 
-			if (raycastHitCallback != null) {
-				raycastHitCallback.Invoke (laserPointer, hit);
-			}
+					// GameObject must be tagged for further functionality
+			 		if(hit.transform.tag == "Untagged") {
 
-			if(hit.transform.tag == "Model_Button" && OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) {
-			  UserInterface.SendMessage("OnVRTriggerDown", hit.transform.name);
-			}
-		}
+			 		} else if(hit.transform.tag == "Button" && OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) {
+
+			 				// Sends a message. If model button, simple update. If mount button, checks to see if it
+			 				// exists in scene. If yes, does nothing. If no, sends message back to VRRaycaster with
+			 				// GameObject Name: VRRaycasterObject.SendMessage('Mount', ModelName); Which will make
+			 				// it active and mount it to raycaster. Update position until drop.
+			 				UserInterface.SendMessage("OnVRTriggerDown", hit.transform.name);
+			 		}
+			 }
+
+		 } else if(mounted) {
+
+			 // If PrimaryIndexTrigger down while mount, set mounted to false and
+			 // activate user interface
+			 if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) {
+				 mounted = false;
+				 UserInterface.SetActive(true);
+			 } else { // else update position of mounted entity
+
+				 // If entity is mounted, touchpad can be used to move entity along z
+				 // x-axes
+				 if (OVRInput.Get(OVRInput.Button.PrimaryTouchpad)) {
+					 if(GetDirection(OVRInput.Get(OVRInput.Axis2D.PrimaryTouchpad, OVRInput.Controller.RTrackedRemote)) == Vector2.up) {
+						 zDist += 0.1f;
+					 } else if(GetDirection(OVRInput.Get(OVRInput.Axis2D.PrimaryTouchpad, OVRInput.Controller.RTrackedRemote)) == Vector2.down) {
+						 zDist -= 0.1f;
+					 } else if(GetDirection(OVRInput.Get(OVRInput.Axis2D.PrimaryTouchpad, OVRInput.Controller.RTrackedRemote)) == Vector2.left) {
+						 xDist -= 0.1f;
+					 } else if(GetDirection(OVRInput.Get(OVRInput.Axis2D.PrimaryTouchpad, OVRInput.Controller.RTrackedRemote)) == Vector2.right) {
+						 xDist += 0.1f;
+					 }
+				 }
+
+				 mountDistance.x = laserPointer.origin.x + laserPointer.direction.x + xDist;
+				 mountDistance.y = laserPointer.origin.y + laserPointer.direction.y;
+				 mountDistance.z = zDist; // value here dependent on touchpad interaction
+
+				 Models[entityToMount].transform.position = mountDistance;
+			 }
+		 }
+	}
+
+	void Mount(uint id) {
+		mounted = true;
+		entityToMount = id;
+		Models[entityToMount].SetActive(true);
+		UserInterface.SetActive(false);
+	}
+
+	Vector2 GetDirection(Vector2 input) {
+		Vector2[] directions = new Vector2[] {
+      Vector2.up,
+      Vector2.right,
+      Vector2.down,
+      Vector2.left
+    };
+
+		Vector2 direction = Vector2.zero;
+    float max = Mathf.NegativeInfinity;
+
+    foreach (Vector2 vec in directions) {
+    	float dot = Vector2.Dot (vec, input.normalized);
+
+      if (dot > max) {
+      	direction = vec;
+      	max = dot;
+      }
+    }
+
+    return direction;
 	}
 }
