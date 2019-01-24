@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Model_Button
   - Button
+  - Model
   layers:
   - Default
   - TransparentFX
