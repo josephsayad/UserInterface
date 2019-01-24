@@ -15,6 +15,7 @@ public class VRRaycaster : MonoBehaviour {
 	public VRRaycaster.Callback raycastHitCallback;
 	public GameObject UserInterface;
 	public GameObject[] Models;
+	public GameObject UIButton;
 
 	private bool mounted = false;
 	private uint entityToMount;
@@ -107,7 +108,12 @@ public class VRRaycaster : MonoBehaviour {
 			 				// exists in scene. If yes, does nothing. If no, sends message back to VRRaycaster with
 			 				// GameObject Name: VRRaycasterObject.SendMessage('Mount', ModelName); Which will make
 			 				// it active and mount it to raycaster. Update position until drop.
-			 				UserInterface.SendMessage("OnVRTriggerDown", hit.transform.name);
+
+							if(hit.transform.name == "OpenUI") { // If UI is Closed
+								UIButton.SendMessage("OnVRTriggerDown");
+							} else { // Else handle UI logic
+								UserInterface.SendMessage("OnVRTriggerDown", hit.transform.name);
+							}
 			 		}
 			 }
 
